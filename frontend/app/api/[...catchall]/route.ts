@@ -24,6 +24,9 @@ async function handleRequest(req: NextRequest, { params }: { params: { catchall:
             headers.set('Content-Type', contentType)
         }
 
+        // Bypass LocalTunnel warning page for API calls
+        headers.set('Bypass-Tunnel-Reminder', 'true')
+
         let bodyContent = undefined
         if (req.method !== 'GET' && req.method !== 'HEAD') {
             bodyContent = await req.text()
