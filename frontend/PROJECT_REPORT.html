@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Báo cáo Dự án Study 1.0</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.6; margin: 40px; }
+        h1 { font-size: 22pt; color: #1a365d; text-align: center; margin-bottom: 30px; }
+        h2 { font-size: 16pt; color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 5px; margin-top: 30px; }
+        h3 { font-size: 14pt; color: #2d3748; margin-top: 20px; }
+        h4 { font-size: 13pt; color: #4a5568; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background-color: #e2e8f0; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f7fafc; }
+        code { background-color: #edf2f7; padding: 2px 6px; font-family: Consolas, monospace; font-size: 11pt; }
+        pre { background-color: #1a202c; color: #e2e8f0; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .center { text-align: center; }
+        .highlight { background-color: #fef3c7; padding: 2px 5px; }
+        ul, ol { margin-left: 20px; }
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+
+<h1>📚 BÁO CÁO DỰ ÁN<br>HỆ THỐNG QUẢN LÝ LỚP HỌC STUDY 1.0</h1>
+
+<p class="center"><strong>Ngày báo cáo:</strong> 29/12/2024</p>
+
+<hr>
+
+<h2>📋 I. THÔNG TIN TỔNG QUAN</h2>
+
+<h3>1.1. Tên dự án</h3>
+<p><strong>Study 1.0</strong> - Hệ thống quản lý lớp học trực tuyến</p>
+
+<h3>1.2. Mô tả</h3>
+<p>Ứng dụng web hỗ trợ giáo viên quản lý lớp học, tạo bài kiểm tra, điểm danh, chấm điểm và tương tác với học sinh. Học sinh có thể tham gia lớp, làm bài kiểm tra, xem điểm và theo dõi thông tin lớp học.</p>
+
+<h3>1.3. Công nghệ sử dụng</h3>
+<table>
+    <tr><th>Thành phần</th><th>Công nghệ</th></tr>
+    <tr><td>Frontend</td><td>Next.js 14, React 18, TypeScript</td></tr>
+    <tr><td>Styling</td><td>TailwindCSS, Radix UI, Shadcn/ui</td></tr>
+    <tr><td>Backend</td><td>Next.js API Routes</td></tr>
+    <tr><td>Database</td><td>PostgreSQL + Prisma ORM</td></tr>
+    <tr><td>Authentication</td><td>Clerk</td></tr>
+    <tr><td>AI Integration</td><td>Google Gemini AI, OpenAI, Groq</td></tr>
+    <tr><td>PWA</td><td>next-pwa</td></tr>
+    <tr><td>QR Code</td><td>html5-qrcode, qrcode</td></tr>
+    <tr><td>Export</td><td>xlsx, file-saver</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>🗂️ II. CẤU TRÚC DỰ ÁN</h2>
+
+<pre><code>study-1.0/
+├── app/                    # Next.js App Router
+│   ├── api/               # API Routes
+│   │   ├── classes/       # API quản lý lớp học
+│   │   ├── ai-generate-quiz/  # API tạo quiz bằng AI
+│   │   ├── attendance/    # API điểm danh
+│   │   └── ...
+│   ├── class/[classId]/   # Trang lớp học (Giáo viên)
+│   ├── dashboard/         # Trang Dashboard
+│   ├── attendance/        # Trang điểm danh
+│   ├── sign-in/          # Trang đăng nhập
+│   └── sign-up/          # Trang đăng ký
+├── components/            # React Components
+│   ├── class/            # Components lớp học (16 files)
+│   ├── quiz/             # Components quiz
+│   ├── layout/           # Layout components
+│   └── ui/               # UI components (Shadcn)
+├── lib/                  # Utilities và helpers
+├── prisma/               # Database schema
+└── public/               # Static files</code></pre>
+
+<div class="page-break"></div>
+
+<h2>📊 III. CƠ SỞ DỮ LIỆU</h2>
+
+<h3>3.1. Các Model chính</h3>
+
+<h4>1. User (Người dùng)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>id</td><td>String</td><td>ID định danh (cuid)</td></tr>
+    <tr><td>clerkId</td><td>String</td><td>Clerk user ID (unique)</td></tr>
+    <tr><td>name</td><td>String</td><td>Tên người dùng</td></tr>
+    <tr><td>email</td><td>String</td><td>Email (unique)</td></tr>
+</table>
+
+<h4>2. Class (Lớp học)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>id</td><td>String</td><td>ID định danh</td></tr>
+    <tr><td>name</td><td>String</td><td>Tên lớp</td></tr>
+    <tr><td>description</td><td>String?</td><td>Mô tả</td></tr>
+    <tr><td>code</td><td>String</td><td>Mã lớp 6 ký tự (unique)</td></tr>
+    <tr><td>ownerId</td><td>String</td><td>ID giáo viên sở hữu</td></tr>
+</table>
+
+<h4>3. ClassMember (Thành viên lớp)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>id</td><td>String</td><td>ID định danh</td></tr>
+    <tr><td>classId</td><td>String</td><td>ID lớp</td></tr>
+    <tr><td>userId</td><td>String</td><td>ID học sinh</td></tr>
+    <tr><td>displayName</td><td>String?</td><td>Tên hiển thị tùy chỉnh</td></tr>
+    <tr><td>status</td><td>String</td><td>Trạng thái: pending/approved/rejected</td></tr>
+</table>
+
+<h4>4. Quiz (Bài kiểm tra)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>title</td><td>String</td><td>Tiêu đề</td></tr>
+    <tr><td>openAt</td><td>DateTime</td><td>Thời gian mở</td></tr>
+    <tr><td>dueAt</td><td>DateTime</td><td>Thời gian đóng</td></tr>
+    <tr><td>durationMinutes</td><td>Int?</td><td>Thời lượng (phút)</td></tr>
+    <tr><td>isPublished</td><td>Boolean</td><td>Đã publish chưa</td></tr>
+    <tr><td>allowRetake</td><td>Boolean</td><td>Cho phép làm lại</td></tr>
+</table>
+
+<h4>5. QuizQuestion (Câu hỏi)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>content</td><td>String</td><td>Nội dung câu hỏi</td></tr>
+    <tr><td>options</td><td>JSON</td><td>{"A":"...", "B":"...", "C":"...", "D":"..."}</td></tr>
+    <tr><td>correctOption</td><td>String</td><td>Đáp án đúng (A/B/C/D)</td></tr>
+    <tr><td>points</td><td>Int</td><td>Điểm</td></tr>
+</table>
+
+<h4>6. AttendanceSession (Phiên điểm danh)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>title</td><td>String</td><td>Tiêu đề phiên</td></tr>
+    <tr><td>code</td><td>String</td><td>Mã điểm danh 6 ký tự</td></tr>
+    <tr><td>expiresAt</td><td>DateTime</td><td>Thời gian hết hạn</td></tr>
+</table>
+
+<h4>7. Announcement (Thông báo/Bảng tin)</h4>
+<table>
+    <tr><th>Trường</th><th>Kiểu</th><th>Mô tả</th></tr>
+    <tr><td>title</td><td>String</td><td>Tiêu đề</td></tr>
+    <tr><td>content</td><td>String?</td><td>Nội dung</td></tr>
+    <tr><td>link</td><td>String?</td><td>Đường link</td></tr>
+    <tr><td>linkTitle</td><td>String?</td><td>Tiêu đề link</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>✨ IV. TÍNH NĂNG CHÍNH</h2>
+
+<h3>4.1. Dành cho Giáo viên</h3>
+<table>
+    <tr><th>Tính năng</th><th>Mô tả</th></tr>
+    <tr><td>Tạo lớp học</td><td>Tạo lớp với mã code tự động 6 ký tự</td></tr>
+    <tr><td>Quản lý thành viên</td><td>Xem danh sách, đổi tên hiển thị, xóa thành viên</td></tr>
+    <tr><td>Phòng chờ (Waiting Room)</td><td>Duyệt/từ chối yêu cầu tham gia lớp</td></tr>
+    <tr><td>Tạo bài kiểm tra</td><td>Tạo quiz trắc nghiệm, có thời hạn, cho phép làm lại</td></tr>
+    <tr><td>AI tạo quiz</td><td>Tự động tạo câu hỏi từ chủ đề hoặc tài liệu</td></tr>
+    <tr><td>Chấm điểm</td><td>Nhập điểm theo môn học và thành phần điểm</td></tr>
+    <tr><td>Điểm danh</td><td>Tạo phiên điểm danh với mã QR</td></tr>
+    <tr><td>Bảng tin</td><td>Đăng thông báo, đính kèm link tài liệu</td></tr>
+    <tr><td>Xuất Excel</td><td>Export danh sách điểm, điểm danh ra Excel</td></tr>
+    <tr><td>Thống kê</td><td>Xem tổng quan lớp học</td></tr>
+</table>
+
+<h3>4.2. Dành cho Học sinh</h3>
+<table>
+    <tr><th>Tính năng</th><th>Mô tả</th></tr>
+    <tr><td>Tham gia lớp</td><td>Nhập mã lớp để gửi yêu cầu tham gia</td></tr>
+    <tr><td>Phòng chờ</td><td>Chờ giáo viên duyệt, có thể hủy yêu cầu</td></tr>
+    <tr><td>Làm bài kiểm tra</td><td>Làm quiz trong thời gian quy định</td></tr>
+    <tr><td>Xem điểm</td><td>Xem điểm theo môn học</td></tr>
+    <tr><td>Điểm danh</td><td>Quét QR hoặc nhập mã điểm danh</td></tr>
+    <tr><td>Xem bảng tin</td><td>Đọc thông báo từ giáo viên</td></tr>
+    <tr><td>Rời lớp</td><td>Tự rời khỏi lớp học</td></tr>
+</table>
+
+<h3>4.3. Tính năng AI</h3>
+<table>
+    <tr><th>Tính năng</th><th>Mô tả</th></tr>
+    <tr><td>AI Quiz Generator</td><td>Sử dụng Gemini/OpenAI/Groq để tạo câu hỏi trắc nghiệm tự động</td></tr>
+    <tr><td>AI Chatbot</td><td>Trợ lý học tập thông minh hỗ trợ giải đáp thắc mắc</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>🖥️ V. CÁC TRANG CHÍNH</h2>
+
+<h3>5.1. Landing Page (<code>/</code>)</h3>
+<ul>
+    <li>Giới thiệu ứng dụng với giao diện đẹp mắt</li>
+    <li>Nút đăng nhập/đăng ký</li>
+</ul>
+
+<h3>5.2. Dashboard (<code>/dashboard</code>)</h3>
+<ul>
+    <li>Hiển thị lớp đang quản lý (cho Giáo viên)</li>
+    <li>Hiển thị lớp đang theo học (cho Học sinh)</li>
+    <li>Hiển thị lớp đang chờ duyệt với badge "Đang chờ"</li>
+    <li>Tạo lớp mới, tham gia lớp bằng mã</li>
+</ul>
+
+<h3>5.3. Trang lớp học - Giáo viên (<code>/class/[classId]</code>)</h3>
+<p>Gồm các Tab:</p>
+<ul>
+    <li><strong>Bảng tin:</strong> Thông báo, link tài liệu</li>
+    <li><strong>Thành viên:</strong> Danh sách học sinh đã duyệt</li>
+    <li><strong>Phòng chờ:</strong> Duyệt yêu cầu tham gia (có badge số lượng)</li>
+    <li><strong>Điểm danh:</strong> Tạo phiên, xem lịch sử</li>
+    <li><strong>Điểm:</strong> Quản lý điểm số theo môn</li>
+    <li><strong>Quiz:</strong> Tạo và quản lý bài kiểm tra</li>
+    <li><strong>Thống kê:</strong> Tổng quan lớp học</li>
+</ul>
+
+<h3>5.4. Trang lớp học - Học sinh (<code>/class/[classId]/student</code>)</h3>
+<p>Gồm các Tab:</p>
+<ul>
+    <li><strong>Bảng tin:</strong> Xem thông báo từ giáo viên</li>
+    <li><strong>Bài kiểm tra:</strong> Làm quiz</li>
+    <li><strong>Bảng điểm:</strong> Xem điểm</li>
+    <li><strong>Điểm danh:</strong> Lịch sử điểm danh</li>
+</ul>
+
+<h3>5.5. Trang điểm danh (<code>/attendance</code>)</h3>
+<ul>
+    <li>Quét mã QR điểm danh</li>
+    <li>Nhập mã điểm danh thủ công</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2>🔒 VI. PHÂN QUYỀN</h2>
+
+<table>
+    <tr><th>Vai trò</th><th>Quyền hạn</th></tr>
+    <tr><td>Giáo viên (Owner)</td><td>Toàn quyền quản lý lớp học của mình: CRUD thành viên, quiz, điểm, điểm danh, thông báo</td></tr>
+    <tr><td>Học sinh (Approved Member)</td><td>Xem bảng tin, làm quiz, xem điểm, điểm danh, rời lớp</td></tr>
+    <tr><td>Pending Member</td><td>Chỉ xem thông tin cơ bản, chờ duyệt, có thể hủy yêu cầu</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>📱 VII. API ENDPOINTS</h2>
+
+<h3>7.1. Classes</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+    <tr><td>GET</td><td>/api/classes</td><td>Lấy danh sách lớp</td></tr>
+    <tr><td>POST</td><td>/api/classes</td><td>Tạo lớp mới</td></tr>
+    <tr><td>DELETE</td><td>/api/classes/[classId]</td><td>Xóa lớp</td></tr>
+    <tr><td>POST</td><td>/api/classes/join</td><td>Tham gia lớp (pending)</td></tr>
+    <tr><td>DELETE</td><td>/api/classes/[classId]/leave</td><td>Rời lớp</td></tr>
+</table>
+
+<h3>7.2. Members</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+    <tr><td>GET</td><td>/api/classes/[classId]/members</td><td>Danh sách thành viên</td></tr>
+    <tr><td>POST</td><td>/api/classes/[classId]/members/[memberId]/approve</td><td>Duyệt thành viên</td></tr>
+    <tr><td>DELETE</td><td>/api/classes/[classId]/members/[memberId]</td><td>Xóa/Từ chối</td></tr>
+    <tr><td>PATCH</td><td>/api/classes/[classId]/members/[memberId]</td><td>Cập nhật tên hiển thị</td></tr>
+</table>
+
+<h3>7.3. Quiz</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+    <tr><td>GET/POST</td><td>/api/classes/[classId]/quizzes</td><td>CRUD quiz</td></tr>
+    <tr><td>POST</td><td>/api/classes/[classId]/quizzes/[quizId]/submit</td><td>Nộp bài</td></tr>
+</table>
+
+<h3>7.4. Attendance</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td>/api/classes/[classId]/attendance</td><td>Tạo phiên điểm danh</td></tr>
+    <tr><td>POST</td><td>/api/attendance/checkin</td><td>Điểm danh</td></tr>
+</table>
+
+<h3>7.5. AI</h3>
+<table>
+    <tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr>
+    <tr><td>POST</td><td>/api/ai-generate-quiz</td><td>Tạo quiz bằng AI</td></tr>
+    <tr><td>POST</td><td>/api/ai-chat</td><td>Chat với AI</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>🎨 VIII. UI/UX DESIGN</h2>
+
+<h3>8.1. Design System</h3>
+<ul>
+    <li><strong>Colors:</strong> Gradient màu xanh dương, tím, xanh lá</li>
+    <li><strong>Typography:</strong> Inter font</li>
+    <li><strong>Components:</strong> Shadcn/ui với Radix UI primitives</li>
+    <li><strong>Animations:</strong> TailwindCSS animations, smooth transitions</li>
+</ul>
+
+<h3>8.2. Responsive Design</h3>
+<ul>
+    <li>Mobile-first approach</li>
+    <li>Hỗ trợ PWA (Progressive Web App)</li>
+    <li>Responsive tables và navigation</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2>🚀 IX. HƯỚNG DẪN TRIỂN KHAI</h2>
+
+<h3>9.1. Cài đặt dependencies</h3>
+<pre><code>npm install</code></pre>
+
+<h3>9.2. Cấu hình môi trường (.env)</h3>
+<pre><code>DATABASE_URL="postgresql://..."
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="..."
+CLERK_SECRET_KEY="..."
+GEMINI_API_KEY="..."
+OPENAI_API_KEY="..."
+GROQ_API_KEY="..."</code></pre>
+
+<h3>9.3. Setup Database</h3>
+<pre><code>npx prisma db push
+npx prisma generate</code></pre>
+
+<h3>9.4. Chạy Development</h3>
+<pre><code>npm run dev</code></pre>
+
+<h3>9.5. Build Production</h3>
+<pre><code>npm run build
+npm start</code></pre>
+
+<h3>9.6. Deploy lên Vercel</h3>
+<pre><code>git push origin main
+# Vercel sẽ tự động build và deploy</code></pre>
+
+<div class="page-break"></div>
+
+<h2>📈 X. TÍNH NĂNG TƯƠNG LAI</h2>
+
+<ul>
+    <li>☐ Realtime notifications (WebSocket)</li>
+    <li>☐ Video call integration</li>
+    <li>☐ File upload to cloud storage</li>
+    <li>☐ Advanced analytics dashboard</li>
+    <li>☐ Mobile app (React Native)</li>
+    <li>☐ Export PDF reports</li>
+    <li>☐ Multi-language support</li>
+    <li>☐ Dark mode</li>
+</ul>
+
+<hr>
+
+<p class="center"><em>Báo cáo được tạo tự động - 29/12/2024</em></p>
+
+</body>
+</html>

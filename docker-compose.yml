@@ -1,0 +1,123 @@
+# ==========================================
+# Docker Compose - Study Microservices
+# ==========================================
+# Chạy: docker-compose up --build
+# Dừng: docker-compose down
+
+version: '3.8'
+
+services:
+  # ==================== API Gateway ====================
+  gateway:
+    build: ./gateway
+    container_name: study-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      - GATEWAY_PORT=4000
+      - USER_SERVICE_URL=http://user-service:4001
+      - CLASS_SERVICE_URL=http://class-service:4002
+      - QUIZ_SERVICE_URL=http://quiz-service:4003
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:4004
+      - GRADE_SERVICE_URL=http://grade-service:4005
+      - AI_SERVICE_URL=http://ai-service:4006
+    env_file:
+      - .env
+    depends_on:
+      - user-service
+      - class-service
+      - quiz-service
+      - attendance-service
+      - grade-service
+      - ai-service
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== User Service ====================
+  user-service:
+    build: ./services/user-service
+    container_name: study-user-service
+    ports:
+      - "4001:4001"
+    environment:
+      - USER_SERVICE_PORT=4001
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== Class Service ====================
+  class-service:
+    build: ./services/class-service
+    container_name: study-class-service
+    ports:
+      - "4002:4002"
+    environment:
+      - CLASS_SERVICE_PORT=4002
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== Quiz Service ====================
+  quiz-service:
+    build: ./services/quiz-service
+    container_name: study-quiz-service
+    ports:
+      - "4003:4003"
+    environment:
+      - QUIZ_SERVICE_PORT=4003
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== Attendance Service ====================
+  attendance-service:
+    build: ./services/attendance-service
+    container_name: study-attendance-service
+    ports:
+      - "4004:4004"
+    environment:
+      - ATTENDANCE_SERVICE_PORT=4004
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== Grade Service ====================
+  grade-service:
+    build: ./services/grade-service
+    container_name: study-grade-service
+    ports:
+      - "4005:4005"
+    environment:
+      - GRADE_SERVICE_PORT=4005
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+  # ==================== AI Service ====================
+  ai-service:
+    build: ./services/ai-service
+    container_name: study-ai-service
+    ports:
+      - "4006:4006"
+    environment:
+      - AI_SERVICE_PORT=4006
+    env_file:
+      - .env
+    networks:
+      - study-network
+    restart: unless-stopped
+
+networks:
+  study-network:
+    driver: bridge

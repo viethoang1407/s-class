@@ -1,0 +1,98 @@
+// Class Service - Prisma Schema
+// ===============================
+// Quản lý: Class, ClassMember, Announcement, Document
+// + User (read-only reference cho join queries)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedClasses     Class[]        @relation("ClassOwner")
+  classMemberships ClassMember[]
+  announcements    Announcement[]
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  code        String   @unique
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner         User           @relation("ClassOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       ClassMember[]
+  documents     Document[]
+  announcements Announcement[]
+
+  @@index([ownerId])
+  @@index([code])
+}
+
+model ClassMember {
+  id          String   @id @default(cuid())
+  classId     String
+  userId      String
+  displayName String?
+  status      String   @default("pending")
+  joinedAt    DateTime @default(now())
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, userId])
+  @@index([classId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  classId     String
+  uploaderId  String
+  title       String
+  description String?
+  fileName    String
+  fileUrl     String
+  fileType    String
+  fileSize    Int
+  createdAt   DateTime @default(now())
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  classId   String
+  authorId  String
+  title     String
+  content   String?
+  link      String?
+  linkTitle String?
+  createdAt DateTime @default(now())
+
+  class  Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([authorId])
+}

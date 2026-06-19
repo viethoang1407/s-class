@@ -1,0 +1,258 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique // Clerk user ID
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ownedClasses     Class[]          @relation("ClassOwner")
+  classMemberships ClassMember[]
+  quizSubmissions  QuizSubmission[]
+  grades           Grade[]
+  announcements    Announcement[]
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  code        String   @unique // 6-char random code (e.g., ABC123)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner              User                @relation("ClassOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members            ClassMember[]
+  quizzes            Quiz[]
+  subjects           Subject[]
+  gradeComponents    GradeComponent[]
+  grades             Grade[]
+  attendanceSessions AttendanceSession[]
+  documents          Document[]
+  announcements      Announcement[]
+
+  @@index([ownerId])
+  @@index([code])
+}
+
+model ClassMember {
+  id          String   @id @default(cuid())
+  classId     String
+  userId      String
+  displayName String?  // Custom name within this class (set by class owner)
+  status      String   @default("pending") // pending, approved, rejected
+  joinedAt    DateTime @default(now())
+
+  // Relations
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, userId])
+  @@index([classId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Quiz {
+  id              String   @id @default(cuid())
+  classId         String
+  title           String
+  description     String?
+  openAt          DateTime
+  dueAt           DateTime
+  durationMinutes Int?
+  isPublished     Boolean  @default(false)
+  allowRetake     Boolean  @default(false) // Cho phép làm lại
+  maxAttempts     Int      @default(1)     // Số lần được làm
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  class       Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  @@index([classId])
+  @@index([isPublished])
+}
+
+model QuizQuestion {
+  id            String @id @default(cuid())
+  quizId        String
+  content       String
+  options       Json   // {"A":"...", "B":"...", "C":"...", "D":"..."}
+  correctOption String // 'A' | 'B' | 'C' | 'D'
+  points        Int    @default(1)
+  orderIndex    Int    @default(0)
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+}
+
+model QuizSubmission {
+  id          String   @id @default(cuid())
+  quizId      String
+  userId      String
+  submittedAt DateTime @default(now())
+  score       Int
+  totalPoints Int
+  answers     Json     // [{"questionId":"...", "selectedOption":"..."}]
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, userId])
+  @@index([quizId])
+  @@index([userId])
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  classId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  // Relations
+  class           Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  gradeComponents GradeComponent[]
+  grades          Grade[]
+
+  @@unique([classId, name])
+  @@index([classId])
+}
+
+model GradeComponent {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String?
+  name      String
+  weight    Float?
+  createdAt DateTime @default(now())
+
+  // Relations
+  class   Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@unique([classId, subjectId, name])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+model Grade {
+  id          String   @id @default(cuid())
+  classId     String
+  subjectId   String
+  componentId String
+  userId      String
+  score       Float
+  note        String?
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  class     Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  component GradeComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId, componentId, userId])
+  @@index([classId])
+  @@index([userId])
+  @@index([subjectId])
+  @@index([componentId])
+}
+
+// Attendance Session - Phiên điểm danh
+model AttendanceSession {
+  id          String   @id @default(cuid())
+  classId     String
+  title       String   // VD: "Buổi 1 - 28/12/2024"
+  code        String   @unique // Mã điểm danh 6 ký tự
+  date        DateTime @default(now())
+  expiresAt   DateTime // Thời gian hết hạn điểm danh
+  createdAt   DateTime @default(now())
+
+  // Relations
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([classId])
+  @@index([code])
+}
+
+// Attendance Record - Bản ghi điểm danh từng học sinh
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  status    String   @default("PRESENT") // PRESENT, ABSENT, LATE, EXCUSED
+  note      String?
+  checkedAt DateTime @default(now())
+  isManual  Boolean  @default(false) // true = giáo viên điểm danh tay
+
+  // Relations
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+// Document - Tài liệu lớp học
+model Document {
+  id          String   @id @default(cuid())
+  classId     String
+  uploaderId  String
+  title       String
+  description String?
+  fileName    String
+  fileUrl     String
+  fileType    String   // pdf, doc, ppt, etc.
+  fileSize    Int      // bytes
+  createdAt   DateTime @default(now())
+
+  // Relations
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+}
+
+// Announcement - Bảng tin lớp học
+model Announcement {
+  id        String   @id @default(cuid())
+  classId   String
+  authorId  String
+  title     String
+  content   String?
+  link      String?
+  linkTitle String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  class  Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([authorId])
+}

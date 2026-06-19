@@ -1,0 +1,23 @@
+{
+  "name": "study-microservices",
+  "version": "1.0.0",
+  "private": true,
+  "description": "S-Class - Microservices Architecture (SOA)",
+  "scripts": {
+    "dev": "concurrently --names \"GW,USER,CLASS,QUIZ,ATT,GRADE,AI\" --prefix-colors \"yellow,blue,green,magenta,cyan,red,white\" \"npm run dev:gateway\" \"npm run dev:user\" \"npm run dev:class\" \"npm run dev:quiz\" \"npm run dev:attendance\" \"npm run dev:grade\" \"npm run dev:ai\"",
+    "dev:gateway": "cd gateway && npm run dev",
+    "dev:user": "cd services/user-service && npm run dev",
+    "dev:class": "cd services/class-service && npm run dev",
+    "dev:quiz": "cd services/quiz-service && npm run dev",
+    "dev:attendance": "cd services/attendance-service && npm run dev",
+    "dev:grade": "cd services/grade-service && npm run dev",
+    "dev:ai": "cd services/ai-service && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd gateway && npm install && cd ../services/user-service && npm install && cd ../class-service && npm install && cd ../quiz-service && npm install && cd ../attendance-service && npm install && cd ../grade-service && npm install && cd ../ai-service && npm install && cd ../../frontend && npm install",
+    "prisma:generate": "cd services/user-service && npx prisma generate && cd ../class-service && npx prisma generate && cd ../quiz-service && npx prisma generate && cd ../attendance-service && npx prisma generate && cd ../grade-service && npx prisma generate",
+    "prisma:push": "cd services/user-service && npx prisma db push && cd ../class-service && npx prisma db push && cd ../quiz-service && npx prisma db push && cd ../attendance-service && npx prisma db push && cd ../grade-service && npx prisma db push"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

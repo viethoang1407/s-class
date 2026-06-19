@@ -1,0 +1,144 @@
+// Schema cho SQLite (offline)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownedClasses     Class[]          @relation("ClassOwner")
+  classMemberships ClassMember[]
+  quizSubmissions  QuizSubmission[]
+  grades           Grade[]
+}
+
+model Class {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  classCode      String   @unique
+  ownerTeacherId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner           User              @relation("ClassOwner", fields: [ownerTeacherId], references: [id], onDelete: Cascade)
+  members         ClassMember[]
+  quizzes         Quiz[]
+  subjects        Subject[]
+  gradeComponents GradeComponent[]
+  grades          Grade[]
+}
+
+model ClassMember {
+  id        String   @id @default(cuid())
+  classId   String
+  studentId String
+  joinedAt  DateTime @default(now())
+
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+}
+
+model Quiz {
+  id              String   @id @default(cuid())
+  classId         String
+  title           String
+  description     String?
+  openAt          DateTime
+  dueAt           DateTime
+  durationMinutes Int?
+  isPublished     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  class       Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+}
+
+model QuizQuestion {
+  id            String @id @default(cuid())
+  quizId        String
+  content       String
+  options       String
+  correctOption String
+  points        Int    @default(1)
+  orderIndex    Int    @default(0)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizSubmission {
+  id          String   @id @default(cuid())
+  quizId      String
+  studentId   String
+  submittedAt DateTime @default(now())
+  score       Int
+  totalPoints Int
+  answers     String
+
+  quiz    Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, studentId])
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  classId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  class           Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  gradeComponents GradeComponent[]
+  grades          Grade[]
+
+  @@unique([classId, name])
+}
+
+model GradeComponent {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String?
+  name      String
+  weight    Float?
+  createdAt DateTime @default(now())
+
+  class   Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@unique([classId, subjectId, name])
+}
+
+model Grade {
+  id          String   @id @default(cuid())
+  classId     String
+  subjectId   String
+  componentId String
+  studentId   String
+  score       Float
+  note        String?
+  updatedAt   DateTime @updatedAt
+
+  class     Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  component GradeComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  student   User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId, componentId, studentId])
+}

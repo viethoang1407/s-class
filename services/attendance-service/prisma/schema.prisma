@@ -1,0 +1,69 @@
+// Attendance Service - Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  code        String   @unique
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attendanceSessions AttendanceSession[]
+
+  @@index([ownerId])
+  @@index([code])
+}
+
+model AttendanceSession {
+  id          String   @id @default(cuid())
+  classId     String
+  title       String
+  code        String   @unique
+  date        DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([classId])
+  @@index([code])
+}
+
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  status    String   @default("PRESENT")
+  note      String?
+  checkedAt DateTime @default(now())
+  isManual  Boolean  @default(false)
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}

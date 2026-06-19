@@ -1,0 +1,94 @@
+// Grade Service - Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  grades Grade[]
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  code        String   @unique
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjects        Subject[]
+  gradeComponents GradeComponent[]
+  grades          Grade[]
+
+  @@index([ownerId])
+  @@index([code])
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  classId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  class           Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  gradeComponents GradeComponent[]
+  grades          Grade[]
+
+  @@unique([classId, name])
+  @@index([classId])
+}
+
+model GradeComponent {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String?
+  name      String
+  weight    Float?
+  createdAt DateTime @default(now())
+
+  class   Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@unique([classId, subjectId, name])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+model Grade {
+  id          String   @id @default(cuid())
+  classId     String
+  subjectId   String
+  componentId String
+  userId      String
+  score       Float
+  note        String?
+  updatedAt   DateTime @updatedAt
+
+  class     Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  component GradeComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId, componentId, userId])
+  @@index([classId])
+  @@index([userId])
+  @@index([subjectId])
+  @@index([componentId])
+}
