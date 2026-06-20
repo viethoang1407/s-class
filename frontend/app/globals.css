@@ -184,3 +184,93 @@
     padding: 12px;
   }
 }
+
+/* Mobile bottom nav body padding */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Mobile card layout - transforms table rows into stacked cards */
+@media (max-width: 767px) {
+  .mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  }
+
+  .mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mobile-card-label {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+  }
+
+  .mobile-card-value {
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    font-weight: 500;
+    text-align: right;
+  }
+}
+
+/* Smooth transitions for mobile interactions */
+.mobile-transition {
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color 0.15s ease;
+}
+
+.mobile-press {
+  transition: transform 0.1s ease-out;
+}
+
+.mobile-press:active {
+  transform: scale(0.96);
+}
+
+/* Bottom nav safe area */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Horizontal scroll with snap points for mobile tabs */
+.mobile-scroll-snap {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-scroll-snap::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-scroll-snap > * {
+  scroll-snap-align: center;
+}
+
+/* Slide-in from bottom animation for popups */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.25s ease-out;
+}

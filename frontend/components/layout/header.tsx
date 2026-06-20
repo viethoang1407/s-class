@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { GraduationCap, Sparkles, Menu, X, ScanLine } from 'lucide-react'
+import { GraduationCap, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserButton, useUser } from '@clerk/nextjs'
-import { useState } from 'react'
 import { QRScanner } from '@/components/qr-scanner'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { useTranslation } from '@/lib/i18n'
 
 export function Header() {
     const { user, isLoaded } = useUser()
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const router = useRouter()
+    const { t } = useTranslation()
 
     const handleQRScan = async (code: string): Promise<boolean> => {
         let attendanceCode = code
@@ -46,7 +47,7 @@ export function Header() {
                             <>
                                 <Link href="/dashboard">
                                     <Button variant="ghost" size="sm">
-                                        Dashboard
+                                        {t('dashboard.title')}
                                     </Button>
                                 </Link>
                                 <QRScanner
@@ -57,9 +58,10 @@ export function Header() {
                                 <Link href="/ai-chat">
                                     <Button variant="ghost" size="sm" className="gap-1">
                                         <Sparkles className="h-4 w-4" />
-                                        AI
+                                        {t('nav.aiChat')}
                                     </Button>
                                 </Link>
+                                <LanguageSwitcher />
                                 <div className="flex items-center gap-3 ml-2">
                                     <span className="text-sm text-slate-600">
                                         {user.firstName || user.emailAddresses[0]?.emailAddress}
@@ -70,54 +72,21 @@ export function Header() {
                         )}
                     </div>
 
-                    {/* Mobile Menu Button */}
+                    {/* Mobile: compact - only QR scanner + user avatar */}
                     <div className="md:hidden flex items-center gap-2">
+                        <LanguageSwitcher />
                         {isLoaded && user && (
-                            <QRScanner
-                                onScan={handleQRScan}
-                                buttonText=""
-                                iconOnly
-                            />
+                            <>
+                                <QRScanner
+                                    onScan={handleQRScan}
+                                    buttonText=""
+                                    iconOnly
+                                />
+                                <UserButton afterSignOutUrl="/" />
+                            </>
                         )}
-                        <button
-                            className="p-2"
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        >
-                            {mobileMenuOpen ? (
-                                <X className="h-6 w-6" />
-                            ) : (
-                                <Menu className="h-6 w-6" />
-                            )}
-                        </button>
                     </div>
                 </div>
-
-                {/* Mobile Navigation */}
-                {mobileMenuOpen && (
-                    <div className="md:hidden py-4 border-t">
-                        {isLoaded && user && (
-                            <div className="flex flex-col gap-2">
-                                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                                    <Button variant="ghost" className="w-full justify-start">
-                                        Dashboard
-                                    </Button>
-                                </Link>
-                                <Link href="/ai-chat" onClick={() => setMobileMenuOpen(false)}>
-                                    <Button variant="ghost" className="w-full justify-start gap-2">
-                                        <Sparkles className="h-4 w-4" />
-                                        AI Assistant
-                                    </Button>
-                                </Link>
-                                <div className="flex items-center gap-3 px-4 py-2 mt-2 border-t pt-4">
-                                    <UserButton afterSignOutUrl="/" />
-                                    <span className="text-sm text-slate-600">
-                                        {user.firstName || user.emailAddresses[0]?.emailAddress}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </header>
     )

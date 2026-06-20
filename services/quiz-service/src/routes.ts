@@ -305,3 +305,267 @@ quizRoutes.get('/:classId/quizzes/:quizId/leaderboard', async (req: Request, res
         return res.status(500).json({ error: 'Lỗi server' })
     }
 })
+
+// PUT /api/classes/:classId/quizzes/:quizId - Chỉnh sửa quiz
+quizRoutes.put('/:classId/quizzes/:quizId', async (req: Request, res: Response) => {
+    try {
+        const clerkId = req.headers['x-user-clerk-id'] as string
+        if (!clerkId) return res.status(401).json({ error: 'Unauthorized' })
+
+        const user = await getUserByClerkId(clerkId)
+        if (!user) return res.status(401).json({ error: 'User not found' })
+
+        const classData = await prisma.class.findUnique({ where: { id: req.params.classId } })
+        if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+
+        // Verify quiz belongs to this class
+        const existingQuiz = await prisma.quiz.findUnique({
+            where: { id: req.params.quizId },
+            include: { _count: { select: { submissions: true } } },
+        })
+        if (!existingQuiz) return res.status(404).json({ error: 'Quiz không tồn tại' })
+        if (existingQuiz.classId !== req.params.classId) return res.status(400).json({ error: 'Quiz không thuộc lớp này' })
+
+        // Only allow editing if quiz is NOT published OR has no submissions
+        if (existingQuiz.isPublished && existingQuiz._count.submissions > 0) {
+            return res.status(400).json({ error: 'Không thể chỉnh sửa quiz đã công bố và có bài nộp' })
+        }
+
+        const { title, description, openAt, dueAt, durationMinutes, questions } = req.body
+
+        if (!title || !openAt || !dueAt) return res.status(400).json({ error: 'Thiếu thông tin' })
+        if (!questions || !Array.isArray(questions) || questions.length === 0) {
+            return res.status(400).json({ error: 'Cần ít nhất 1 câu hỏi' })
+        }
+
+        // Delete existing questions and recreate (transaction)
+        const updatedQuiz = await prisma.$transaction(async (tx) => {
+            await tx.quizQuestion.deleteMany({ where: { quizId: req.params.quizId } })
+
+            return tx.quiz.update({
+                where: { id: req.params.quizId },
+                data: {
+                    title, description,
+                    openAt: new Date(openAt),
+                    dueAt: new Date(dueAt),
+                    durationMinutes: durationMinutes || null,
+                    questions: {
+                        create: questions.map((q: any, index: number) => ({
+                            content: q.content, options: q.options,
+                            correctOption: q.correctOption, points: q.points || 1, orderIndex: index,
+                        })),
+                    },
+                },
+                include: {
+                    questions: { orderBy: { orderIndex: 'asc' } },
+                    _count: { select: { submissions: true } },
+                },
+            })
+        })
+
+        return res.json(updatedQuiz)
+    } catch (error) {
+        console.error('Error updating quiz:', error)
+        return res.status(500).json({ error: 'Không thể cập nhật quiz' })
+    }
+})
+
+// POST /api/classes/:classId/quizzes/:quizId/duplicate - Nhân bản quiz
+quizRoutes.post('/:classId/quizzes/:quizId/duplicate', async (req: Request, res: Response) => {
+    try {
+        const clerkId = req.headers['x-user-clerk-id'] as string
+        if (!clerkId) return res.status(401).json({ error: 'Unauthorized' })
+
+        const user = await getUserByClerkId(clerkId)
+        if (!user) return res.status(401).json({ error: 'User not found' })
+
+        // Validate source class ownership
+        const sourceClass = await prisma.class.findUnique({ where: { id: req.params.classId } })
+        if (!sourceClass || sourceClass.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+
+        const { targetClassId, newTitle } = req.body
+        const destinationClassId = targetClassId || req.params.classId
+
+        // Validate target class ownership (if different from source)
+        if (destinationClassId !== req.params.classId) {
+            const targetClass = await prisma.class.findUnique({ where: { id: destinationClassId } })
+            if (!targetClass || targetClass.ownerId !== user.id) {
+                return res.status(403).json({ error: 'Không có quyền truy cập lớp đích' })
+            }
+        }
+
+        // Fetch source quiz with questions
+        const sourceQuiz = await prisma.quiz.findUnique({
+            where: { id: req.params.quizId },
+            include: { questions: { orderBy: { orderIndex: 'asc' } } },
+        })
+        if (!sourceQuiz) return res.status(404).json({ error: 'Quiz không tồn tại' })
+        if (sourceQuiz.classId !== req.params.classId) return res.status(400).json({ error: 'Quiz không thuộc lớp này' })
+
+        // Create duplicated quiz (unpublished by default)
+        const duplicatedQuiz = await prisma.quiz.create({
+            data: {
+                classId: destinationClassId,
+                title: newTitle || `${sourceQuiz.title} (Bản sao)`,
+                description: sourceQuiz.description,
+                openAt: sourceQuiz.openAt,
+                dueAt: sourceQuiz.dueAt,
+                durationMinutes: sourceQuiz.durationMinutes,
+                isPublished: false,
+                allowRetake: sourceQuiz.allowRetake,
+                maxAttempts: sourceQuiz.maxAttempts,
+                questions: {
+                    create: sourceQuiz.questions.map((q, index) => ({
+                        content: q.content, options: q.options,
+                        correctOption: q.correctOption, points: q.points, orderIndex: index,
+                    })),
+                },
+            },
+            include: {
+                questions: { orderBy: { orderIndex: 'asc' } },
+            },
+        })
+
+        return res.json(duplicatedQuiz)
+    } catch (error) {
+        console.error('Error duplicating quiz:', error)
+        return res.status(500).json({ error: 'Không thể nhân bản quiz' })
+    }
+})
+
+// POST /api/classes/:classId/quizzes/:quizId/unpublish - Hủy công bố quiz
+quizRoutes.post('/:classId/quizzes/:quizId/unpublish', async (req: Request, res: Response) => {
+    try {
+        const clerkId = req.headers['x-user-clerk-id'] as string
+        if (!clerkId) return res.status(401).json({ error: 'Unauthorized' })
+
+        const user = await getUserByClerkId(clerkId)
+        if (!user) return res.status(401).json({ error: 'User not found' })
+
+        const classData = await prisma.class.findUnique({ where: { id: req.params.classId } })
+        if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+
+        // Check quiz exists and belongs to this class
+        const quiz = await prisma.quiz.findUnique({
+            where: { id: req.params.quizId },
+            include: { _count: { select: { submissions: true } } },
+        })
+        if (!quiz) return res.status(404).json({ error: 'Quiz không tồn tại' })
+        if (quiz.classId !== req.params.classId) return res.status(400).json({ error: 'Quiz không thuộc lớp này' })
+
+        // Only allow unpublish if no submissions
+        if (quiz._count.submissions > 0) {
+            return res.status(400).json({ error: 'Không thể hủy công bố quiz đã có bài nộp' })
+        }
+
+        const updatedQuiz = await prisma.quiz.update({
+            where: { id: req.params.quizId },
+            data: { isPublished: false },
+        })
+
+        return res.json(updatedQuiz)
+    } catch (error) {
+        console.error('Error unpublishing quiz:', error)
+        return res.status(500).json({ error: 'Không thể hủy công bố quiz' })
+    }
+})
+
+// GET /api/classes/:classId/stats - Thống kê tổng quan lớp học
+quizRoutes.get('/:classId/stats', async (req: Request, res: Response) => {
+    try {
+        const clerkId = req.headers['x-user-clerk-id'] as string
+        if (!clerkId) return res.status(401).json({ error: 'Unauthorized' })
+
+        const user = await getUserByClerkId(clerkId)
+        if (!user) return res.status(401).json({ error: 'User not found' })
+
+        const classData = await prisma.class.findUnique({ where: { id: req.params.classId } })
+        if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+
+        // Fetch all quizzes with submissions for this class
+        const quizzes = await prisma.quiz.findMany({
+            where: { classId: req.params.classId },
+            include: {
+                submissions: {
+                    include: { user: { select: { id: true, name: true } } },
+                },
+                _count: { select: { questions: true } },
+            },
+        })
+
+        const totalQuizzes = quizzes.length
+        const allSubmissions = quizzes.flatMap(q => q.submissions)
+        const totalSubmissions = allSubmissions.length
+
+        if (totalSubmissions === 0) {
+            return res.json({
+                totalQuizzes,
+                totalSubmissions: 0,
+                averageScore: 0,
+                scoreDistribution: { '0-20': 0, '20-40': 0, '40-60': 0, '60-80': 0, '80-100': 0 },
+                topStudents: [],
+                completionRate: 0,
+            })
+        }
+
+        // Average score (percentage)
+        const totalPercentage = allSubmissions.reduce((sum, s) =>
+            sum + (s.totalPoints > 0 ? (s.score / s.totalPoints) * 100 : 0), 0)
+        const averageScore = Math.round(totalPercentage / totalSubmissions)
+
+        // Score distribution
+        const scoreDistribution = { '0-20': 0, '20-40': 0, '40-60': 0, '60-80': 0, '80-100': 0 }
+        allSubmissions.forEach(s => {
+            const pct = s.totalPoints > 0 ? (s.score / s.totalPoints) * 100 : 0
+            if (pct < 20) scoreDistribution['0-20']++
+            else if (pct < 40) scoreDistribution['20-40']++
+            else if (pct < 60) scoreDistribution['40-60']++
+            else if (pct < 80) scoreDistribution['60-80']++
+            else scoreDistribution['80-100']++
+        })
+
+        // Top 5 students by average score
+        const studentScores: Record<string, { name: string; total: number; count: number }> = {}
+        allSubmissions.forEach(s => {
+            const uid = s.user.id
+            if (!studentScores[uid]) studentScores[uid] = { name: s.user.name, total: 0, count: 0 }
+            studentScores[uid].total += s.totalPoints > 0 ? (s.score / s.totalPoints) * 100 : 0
+            studentScores[uid].count++
+        })
+
+        const topStudents = Object.entries(studentScores)
+            .map(([userId, data]) => ({
+                userId,
+                name: data.name,
+                averageScore: Math.round(data.total / data.count),
+                quizzesTaken: data.count,
+            }))
+            .sort((a, b) => b.averageScore - a.averageScore)
+            .slice(0, 5)
+
+        // Completion rate: unique students who submitted / total class members
+        const totalMembers = await prisma.classMember.count({
+            where: { classId: req.params.classId, status: 'approved' },
+        })
+        const uniqueSubmitters = new Set(allSubmissions.map(s => s.userId)).size
+        const publishedQuizCount = quizzes.filter(q => q.isPublished).length
+
+        // Completion rate = (total submissions) / (members × published quizzes) × 100
+        const expectedSubmissions = totalMembers * publishedQuizCount
+        const completionRate = expectedSubmissions > 0
+            ? Math.round((totalSubmissions / expectedSubmissions) * 100)
+            : 0
+
+        return res.json({
+            totalQuizzes,
+            totalSubmissions,
+            averageScore,
+            scoreDistribution,
+            topStudents,
+            completionRate,
+        })
+    } catch (error) {
+        console.error('Stats error:', error)
+        return res.status(500).json({ error: 'Lỗi server' })
+    }
+})

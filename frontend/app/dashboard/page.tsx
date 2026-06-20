@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Plus, Users, LogIn, BookOpen, ArrowRight, GraduationCap, Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { ClassCardSkeleton } from '@/components/ui/skeleton'
+import { useTranslation } from '@/lib/i18n'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -40,6 +41,7 @@ interface ClassData {
 export default function DashboardPage() {
     const router = useRouter()
     const { toast } = useToast()
+    const { t } = useTranslation()
     const [ownedClasses, setOwnedClasses] = useState<ClassData[]>([])
     const [joinedClasses, setJoinedClasses] = useState<ClassData[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -103,7 +105,7 @@ export default function DashboardPage() {
 
     const handleCreateClass = async () => {
         if (!newClassName.trim()) {
-            toast({ title: 'Lỗi', description: 'Vui lòng nhập tên lớp', variant: 'destructive' })
+            toast({ title: t('dashboard.toastError'), description: t('dashboard.toastEnterClassName'), variant: 'destructive' })
             return
         }
 
@@ -126,13 +128,13 @@ export default function DashboardPage() {
             }
 
             const newClass = await response.json()
-            toast({ title: '✓ Tạo lớp thành công!' })
+            toast({ title: `✓ ${t('dashboard.toastCreateSuccess')}` })
             setCreateDialogOpen(false)
             setNewClassName('')
             setNewClassDesc('')
             router.push(`/class/${newClass.id}`)
         } catch (error: any) {
-            toast({ title: 'Lỗi', description: error.message || 'Không thể tạo lớp', variant: 'destructive' })
+            toast({ title: t('dashboard.toastError'), description: error.message || t('dashboard.toastError'), variant: 'destructive' })
         } finally {
             setIsCreating(false)
         }
@@ -140,7 +142,7 @@ export default function DashboardPage() {
 
     const handleJoinClass = async () => {
         if (!classCode.trim()) {
-            toast({ title: 'Lỗi', description: 'Vui lòng nhập mã lớp', variant: 'destructive' })
+            toast({ title: t('dashboard.toastError'), description: t('dashboard.toastEnterClassCode'), variant: 'destructive' })
             return
         }
 
@@ -158,12 +160,12 @@ export default function DashboardPage() {
                 throw new Error(data.error || 'Không thể tham gia lớp')
             }
 
-            toast({ title: '✓ Tham gia lớp thành công!' })
+            toast({ title: `✓ ${t('dashboard.toastJoinSuccess')}` })
             setJoinDialogOpen(false)
             setClassCode('')
             fetchClasses()
         } catch (error: any) {
-            toast({ title: 'Lỗi', description: error.message, variant: 'destructive' })
+            toast({ title: t('dashboard.toastError'), description: error.message, variant: 'destructive' })
         } finally {
             setIsJoining(false)
         }
@@ -181,10 +183,10 @@ export default function DashboardPage() {
                 throw new Error(data.error || 'Không thể xóa lớp')
             }
 
-            toast({ title: `✓ Đã xóa lớp "${className}"` })
+            toast({ title: `✓ ${t('dashboard.toastDeleteSuccess').replace('{className}', className)}` })
             fetchClasses()
         } catch (error: any) {
-            toast({ title: 'Lỗi', description: error.message, variant: 'destructive' })
+            toast({ title: t('dashboard.toastError'), description: error.message, variant: 'destructive' })
         } finally {
             setDeletingClassId(null)
         }
@@ -201,8 +203,8 @@ export default function DashboardPage() {
             if (response.ok) {
                 const classItem = joinedClasses.find(c => c.id === leavingClassId)
                 toast({
-                    title: classItem?.myStatus === 'pending' ? 'Đã hủy yêu cầu' : 'Đã rời lớp',
-                    description: `Bạn đã rời khỏi lớp "${classItem?.name}"`,
+                    title: classItem?.myStatus === 'pending' ? t('dashboard.toastCancelRequestSuccess') : t('dashboard.toastLeaveSuccess'),
+                    description: t('dashboard.toastLeftClassDesc').replace('{className}', classItem?.name || ''),
                 })
                 fetchClasses()
             } else {
@@ -210,8 +212,8 @@ export default function DashboardPage() {
             }
         } catch (error) {
             toast({
-                title: 'Lỗi',
-                description: 'Đã xảy ra lỗi khi rời lớp',
+                title: t('dashboard.toastError'),
+                description: t('dashboard.toastLeaveError'),
                 variant: 'destructive',
             })
         } finally {
@@ -253,8 +255,8 @@ export default function DashboardPage() {
             <main className="container mx-auto px-4 py-6 max-w-6xl">
                 {/* Welcome */}
                 <div className="mb-8">
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-800">📚 Lớp học của tôi</h1>
-                    <p className="text-slate-500 mt-1">Quản lý các lớp học của bạn</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{t('dashboard.myClassesHeader')}</h1>
+                    <p className="text-slate-500 mt-1">{t('dashboard.myClassesDesc')}</p>
                 </div>
 
                 {/* Action Buttons */}
@@ -263,36 +265,36 @@ export default function DashboardPage() {
                         <DialogTrigger asChild>
                             <Button className="gap-2">
                                 <Plus className="h-4 w-4" />
-                                Tạo lớp mới
+                                {t('dashboard.createNewClass')}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Tạo lớp học mới</DialogTitle>
+                                <DialogTitle>{t('dashboard.createClassTitle')}</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <Label>Tên lớp *</Label>
+                                    <Label>{t('dashboard.classNameLabel')}</Label>
                                     <Input
                                         value={newClassName}
                                         onChange={(e) => setNewClassName(e.target.value)}
-                                        placeholder="VD: Toán 12A1"
+                                        placeholder={t('dashboard.classNamePlaceholder')}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Mô tả</Label>
+                                    <Label>{t('dashboard.classDescLabel')}</Label>
                                     <Textarea
                                         value={newClassDesc}
                                         onChange={(e) => setNewClassDesc(e.target.value)}
-                                        placeholder="Mô tả ngắn về lớp học"
+                                        placeholder={t('dashboard.classDescPlaceholder')}
                                         rows={3}
                                     />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Hủy</Button>
+                                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>{t('common.cancel')}</Button>
                                 <Button onClick={handleCreateClass} disabled={isCreating}>
-                                    {isCreating ? 'Đang tạo...' : 'Tạo lớp'}
+                                    {isCreating ? t('dashboard.creating') : t('dashboard.createClass')}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -302,32 +304,32 @@ export default function DashboardPage() {
                         <DialogTrigger asChild>
                             <Button variant="outline" className="gap-2">
                                 <LogIn className="h-4 w-4" />
-                                Tham gia lớp
+                                {t('dashboard.joinClass')}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Tham gia lớp học</DialogTitle>
+                                <DialogTitle>{t('dashboard.joinClassTitle')}</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <Label>Mã lớp</Label>
+                                    <Label>{t('dashboard.classCodeLabel')}</Label>
                                     <Input
                                         value={classCode}
                                         onChange={(e) => setClassCode(e.target.value.toUpperCase())}
-                                        placeholder="Nhập mã lớp"
+                                        placeholder={t('dashboard.classCodePlaceholder')}
                                         className="text-center text-2xl tracking-widest uppercase"
                                         maxLength={6}
                                     />
                                     <p className="text-sm text-slate-500 text-center">
-                                        Nhập mã 6 ký tự do giáo viên cung cấp
+                                        {t('dashboard.classCodeHelp')}
                                     </p>
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setJoinDialogOpen(false)}>Hủy</Button>
+                                <Button variant="outline" onClick={() => setJoinDialogOpen(false)}>{t('common.cancel')}</Button>
                                 <Button onClick={handleJoinClass} disabled={isJoining}>
-                                    {isJoining ? 'Đang tham gia...' : 'Tham gia'}
+                                    {isJoining ? t('dashboard.joining') : t('dashboard.joinClass')}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -338,15 +340,15 @@ export default function DashboardPage() {
                 <div className="mb-8">
                     <h2 className="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <GraduationCap className="h-5 w-5 text-blue-500" />
-                        Lớp tôi dạy ({ownedClasses.length})
+                        {t('dashboard.classesITeach')} ({ownedClasses.length})
                     </h2>
                     {ownedClasses.length === 0 ? (
                         <Card className="bg-slate-50 border-dashed">
                             <CardContent className="py-8 text-center text-slate-500">
                                 <BookOpen className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                                <p>Bạn chưa tạo lớp nào</p>
+                                <p>{t('dashboard.noOwnedClasses')}</p>
                                 <Button variant="link" onClick={() => setCreateDialogOpen(true)}>
-                                    Tạo lớp đầu tiên →
+                                    {t('dashboard.createFirstClass')}
                                 </Button>
                             </CardContent>
                         </Card>
@@ -359,14 +361,14 @@ export default function DashboardPage() {
                                             <CardHeader className="pb-2">
                                                 <CardTitle className="text-lg pr-8">{classItem.name}</CardTitle>
                                                 <CardDescription className="line-clamp-2">
-                                                    {classItem.description || 'Không có mô tả'}
+                                                    {classItem.description || t('dashboard.noDesc')}
                                                 </CardDescription>
                                             </CardHeader>
                                             <CardContent>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2 text-sm text-slate-500">
                                                         <Users className="h-4 w-4" />
-                                                        {classItem._count?.members || 0} học sinh
+                                                        {t('dashboard.studentsCount').replace('{count}', (classItem._count?.members || 0).toString())}
                                                     </div>
                                                     <div className="flex items-center gap-1 text-sm font-mono bg-slate-100 px-2 py-1 rounded">
                                                         {classItem.code}
@@ -385,15 +387,15 @@ export default function DashboardPage() {
                 <div>
                     <h2 className="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <Users className="h-5 w-5 text-green-500" />
-                        Lớp tôi học ({joinedClasses.length})
+                        {t('dashboard.classesIStudy')} ({joinedClasses.length})
                     </h2>
                     {joinedClasses.length === 0 ? (
                         <Card className="bg-slate-50 border-dashed">
                             <CardContent className="py-8 text-center text-slate-500">
                                 <LogIn className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                                <p>Bạn chưa tham gia lớp nào</p>
+                                <p>{t('dashboard.noJoinedClasses')}</p>
                                 <Button variant="link" onClick={() => setJoinDialogOpen(true)}>
-                                    Tham gia lớp →
+                                    {t('dashboard.joinFirstClass')}
                                 </Button>
                             </CardContent>
                         </Card>
@@ -408,19 +410,19 @@ export default function DashboardPage() {
                                                     <CardTitle className="text-lg">{classItem.name}</CardTitle>
                                                     {classItem.myStatus === 'pending' && (
                                                         <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium whitespace-nowrap">
-                                                            Đang chờ
+                                                            {t('dashboard.pendingBadge')}
                                                         </span>
                                                     )}
                                                 </div>
                                                 <CardDescription className="line-clamp-2">
-                                                    GV: {classItem.owner?.name || 'N/A'}
+                                                    {t('dashboard.teacherPrefix')} {classItem.owner?.name || 'N/A'}
                                                 </CardDescription>
                                             </CardHeader>
                                             <CardContent>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2 text-sm text-slate-500">
                                                         <Users className="h-4 w-4" />
-                                                        {classItem._count?.members || 0} thành viên
+                                                        {t('dashboard.membersCount').replace('{count}', (classItem._count?.members || 0).toString())}
                                                     </div>
                                                     {classItem.myStatus === 'approved' && (
                                                         <ArrowRight className="h-4 w-4 text-green-500" />
@@ -443,7 +445,7 @@ export default function DashboardPage() {
                                             }}
                                         >
                                             <LogOut className="h-3 w-3" />
-                                            Rời
+                                            {t('dashboard.leave')}
                                         </Button>
                                     )}
                                 </div>
@@ -458,19 +460,19 @@ export default function DashboardPage() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>
                                 {joinedClasses.find(c => c.id === leavingClassId)?.myStatus === 'pending'
-                                    ? 'Hủy yêu cầu tham gia?'
-                                    : 'Rời khỏi lớp học?'}
+                                    ? t('dashboard.leaveClassAlertTitlePending')
+                                    : t('dashboard.leaveClassAlertTitleApproved')}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                                 {joinedClasses.find(c => c.id === leavingClassId)?.myStatus === 'pending'
-                                    ? 'Bạn có chắc chắn muốn hủy yêu cầu tham gia lớp này không?'
-                                    : 'Bạn có chắc chắn muốn rời khỏi lớp học này không?'}
+                                    ? t('dashboard.leaveClassAlertDescPending')
+                                    : t('dashboard.leaveClassAlertDescApproved')}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Không</AlertDialogCancel>
+                            <AlertDialogCancel>{t('dashboard.leaveClassAlertNo')}</AlertDialogCancel>
                             <AlertDialogAction onClick={handleLeaveClass} className="bg-red-500 hover:bg-red-600">
-                                {joinedClasses.find(c => c.id === leavingClassId)?.myStatus === 'pending' ? 'Hủy yêu cầu' : 'Rời lớp'}
+                                {joinedClasses.find(c => c.id === leavingClassId)?.myStatus === 'pending' ? t('dashboard.leaveClassAlertYesPending') : t('dashboard.leaveClassAlertYesApproved')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>

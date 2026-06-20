@@ -5,6 +5,9 @@ import { Toaster } from '@/components/ui/toaster'
 import { ClerkProvider } from '@clerk/nextjs'
 import { viVN } from '@clerk/localizations'
 import { AIChatbot } from '@/components/ai-chatbot'
+import { InstallPrompt } from '@/components/pwa/install-prompt'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
+import { I18nProvider } from '@/lib/i18n'
 
 const inter = Inter({ subsets: ['latin', 'vietnamese'] })
 
@@ -13,14 +16,14 @@ export const metadata: Metadata = {
     description: 'Nền tảng giáo dục trực tuyến cho giáo viên và học sinh',
     manifest: '/manifest.json',
     appleWebApp: {
-        capable: false,
+        capable: true,
         statusBarStyle: 'default',
-        title: 'S-Class App',
+        title: 'S-Class',
     },
 }
 
 export const viewport: Viewport = {
-    themeColor: '#3b82f6',
+    themeColor: '#4f46e5',
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
@@ -38,9 +41,13 @@ export default function RootLayout({
         <ClerkProvider localization={viVN}>
             <html lang="vi">
                 <body className={inter.className}>
-                    {children}
-                    <AIChatbot />
-                    <Toaster />
+                    <I18nProvider>
+                        {children}
+                        <MobileBottomNav />
+                        <AIChatbot />
+                        <InstallPrompt />
+                        <Toaster />
+                    </I18nProvider>
                 </body>
             </html>
         </ClerkProvider>
