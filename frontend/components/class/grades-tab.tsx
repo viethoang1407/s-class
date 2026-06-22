@@ -314,7 +314,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
             </Dialog>
 
             {/* Subject Cards */}
-            {subjects.map((subject) => (
+            {subjects.map((subject: any) => (
                 <Card key={subject.id} className="overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 pb-3">
                         <div className="flex items-center justify-between">
