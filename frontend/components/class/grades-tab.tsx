@@ -19,9 +19,10 @@ interface GradesTabProps {
 export function GradesTab({ classData, isOwner }: GradesTabProps) {
     const router = useRouter()
     const { toast } = useToast()
-    const [subjects, setSubjects] = useState<any[]>(classData.subjects || [])
+    const subjects = classData.subjects || []
     const [newSubjectName, setNewSubjectName] = useState('')
     const [newComponentName, setNewComponentName] = useState('')
+    const [newComponentWeight, setNewComponentWeight] = useState('')
     const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
     const [isAddingSubject, setIsAddingSubject] = useState(false)
     const [isAddingComponent, setIsAddingComponent] = useState(false)
@@ -62,13 +63,17 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
             const response = await fetch(`/api/classes/${classData.id}/subjects/${selectedSubjectId}/components`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newComponentName.trim() }),
+                body: JSON.stringify({
+                    name: newComponentName.trim(),
+                    weight: newComponentWeight ? parseFloat(newComponentWeight) : null
+                }),
             })
 
             if (!response.ok) throw new Error('Không thể thêm đầu điểm')
 
             toast({ title: '✓ Đã thêm đầu điểm' })
             setNewComponentName('')
+            setNewComponentWeight('')
             setIsAddingComponent(false)
             router.refresh()
         } catch (error) {
@@ -177,15 +182,34 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
         const subject = subjects.find(s => s.id === subjectId)
         if (!subject?.gradeComponents?.length) return null
 
-        const grades = subject.gradeComponents.map((comp: any) => {
+        const componentGrades = subject.gradeComponents.map((comp: any) => {
             const grade = classData.grades?.find(
                 (g: any) => g.userId === memberId && g.componentId === comp.id
             )
-            return grade?.score
-        }).filter((s: any) => s !== undefined && s !== null)
+            return {
+                score: grade?.score,
+                weight: comp.weight
+            }
+        }).filter((item: any) => item.score !== undefined && item.score !== null)
 
-        if (grades.length === 0) return null
-        return (grades.reduce((a: number, b: number) => a + b, 0) / grades.length).toFixed(1)
+        if (componentGrades.length === 0) return null
+
+        const hasWeights = componentGrades.some((item: any) => item.weight !== null && item.weight !== undefined && item.weight > 0)
+
+        if (hasWeights) {
+            let totalWeightedScore = 0
+            let totalWeight = 0
+            componentGrades.forEach((item: any) => {
+                const w = item.weight || 0
+                totalWeightedScore += item.score * w
+                totalWeight += w
+            })
+            if (totalWeight === 0) return null
+            return (totalWeightedScore / totalWeight).toFixed(1)
+        } else {
+            const sum = componentGrades.reduce((acc: number, item: any) => acc + item.score, 0)
+            return (sum / componentGrades.length).toFixed(1)
+        }
     }
 
     const getScoreColor = (score: number | null) => {
@@ -327,13 +351,32 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                         <DialogHeader>
                                             <DialogTitle>Thêm đầu điểm - {subject.name}</DialogTitle>
                                         </DialogHeader>
-                                        <div className="py-4">
-                                            <Label>Tên đầu điểm</Label>
-                                            <Input
-                                                value={newComponentName}
-                                                onChange={(e) => setNewComponentName(e.target.value)}
-                                                placeholder="VD: Miệng, 15 phút, 1 tiết..."
-                                            />
+                                        <div className="py-4 space-y-4">
+                                            <div className="space-y-2">
+                                                <Label>Tên đầu điểm</Label>
+                                                <Input
+                                                    value={newComponentName}
+                                                    onChange={(e) => setNewComponentName(e.target.value)}
+                                                    placeholder="VD: Miệng, 15 phút, 1 tiết..."
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Trọng số (%)</Label>
+                                                <select
+                                                    value={newComponentWeight}
+                                                    onChange={(e) => setNewComponentWeight(e.target.value)}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    <option value="">Mặc định (Không trọng số)</option>
+                                                    <option value="10">10%</option>
+                                                    <option value="15">15%</option>
+                                                    <option value="20">20%</option>
+                                                    <option value="30">30%</option>
+                                                    <option value="40">40%</option>
+                                                    <option value="50">50%</option>
+                                                    <option value="100">100%</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <DialogFooter>
                                             <Button variant="outline" onClick={() => setIsAddingComponent(false)}>Hủy</Button>
@@ -353,7 +396,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                             <th className="text-left py-3 px-4 font-medium text-slate-600">Học sinh</th>
                                             {subject.gradeComponents.map((comp: any) => (
                                                 <th key={comp.id} className="text-center py-3 px-2 font-medium text-slate-600 min-w-[70px]">
-                                                    {comp.name}
+                                                    {comp.name} {comp.weight ? `(${comp.weight}%)` : ''}
                                                 </th>
                                             ))}
                                             <th className="text-center py-3 px-4 font-medium text-blue-600 bg-blue-50 min-w-[70px]">
@@ -390,8 +433,20 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                                                             } ${getScoreColor(existingGrade?.score)}`}
                                                                         defaultValue={existingGrade?.score ?? ''}
                                                                         onBlur={(e) => {
-                                                                            const value = parseFloat(e.target.value)
-                                                                            if (!isNaN(value) && value >= 0 && value <= 10) {
+                                                                            const rawValue = e.target.value.trim()
+                                                                            if (rawValue === '') {
+                                                                                e.target.value = existingGrade?.score ?? ''
+                                                                                return
+                                                                            }
+                                                                            const value = parseFloat(rawValue)
+                                                                            if (isNaN(value) || value < 0 || value > 10) {
+                                                                                toast({
+                                                                                    title: 'Lỗi',
+                                                                                    description: 'Điểm chỉ được nhập từ 0 đến 10',
+                                                                                    variant: 'destructive',
+                                                                                })
+                                                                                e.target.value = existingGrade?.score ?? ''
+                                                                            } else {
                                                                                 handleSaveGrade(member.user.id, comp.id, value)
                                                                             }
                                                                         }}
@@ -473,7 +528,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                     <div className="border rounded-lg divide-y">
                                         {components.map((comp: any) => (
                                             <div key={comp.id} className="flex items-center justify-between px-3 py-2">
-                                                <span className="text-sm">{comp.name}</span>
+                                                <span className="text-sm">{comp.name} {comp.weight ? `(${comp.weight}%)` : ''}</span>
                                                 <button
                                                     onClick={() => {
                                                         setDeletingComponent({

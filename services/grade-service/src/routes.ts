@@ -98,14 +98,19 @@ gradeRoutes.post('/:classId/grades', async (req: Request, res: Response) => {
 
         const { studentId, subjectId, componentId, score } = req.body
 
+        const numericScore = parseFloat(score)
+        if (isNaN(numericScore) || numericScore < 0 || numericScore > 10) {
+            return res.status(400).json({ error: 'Điểm chỉ được từ 0 đến 10' })
+        }
+
         const grade = await prisma.grade.upsert({
             where: {
                 classId_subjectId_componentId_userId: {
                     classId: req.params.classId, subjectId, componentId, userId: studentId,
                 },
             },
-            update: { score },
-            create: { classId: req.params.classId, subjectId, componentId, userId: studentId, score },
+            update: { score: numericScore },
+            create: { classId: req.params.classId, subjectId, componentId, userId: studentId, score: numericScore },
         })
 
         return res.json(grade)
