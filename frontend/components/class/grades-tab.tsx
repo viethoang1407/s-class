@@ -518,7 +518,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
                         {/* Danh sách đầu điểm */}
                         {editingSubject && (() => {
-                            const subject = subjects.find(s => s.id === editingSubject.id)
+                            const subject = subjects.find((s: any) => s.id === editingSubject.id)
                             const components = subject?.gradeComponents || []
                             if (components.length === 0) return null
 
