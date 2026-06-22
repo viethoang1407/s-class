@@ -221,7 +221,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
     }
 
     // Stats
-    const totalComponents = subjects.reduce((sum, s) => sum + (s.gradeComponents?.length || 0), 0)
+    const totalComponents = subjects.reduce((sum: number, s: any) => sum + (s.gradeComponents?.length || 0), 0)
     const totalGrades = classData.grades?.length || 0
 
     if (subjects.length === 0) {
