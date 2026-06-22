@@ -152,7 +152,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
         setSavingGrade(key)
 
         try {
-            const subject = subjects.find(s => s.gradeComponents.some((c: any) => c.id === componentId))
+            const subject = subjects.find((s: any) => s.gradeComponents.some((c: any) => c.id === componentId))
 
             const response = await fetch(`/api/classes/${classData.id}/grades`, {
                 method: 'POST',
@@ -179,7 +179,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
     // Calculate averages
     const calculateAverage = (memberId: string, subjectId: string) => {
-        const subject = subjects.find(s => s.id === subjectId)
+        const subject = subjects.find((s: any) => s.id === subjectId)
         if (!subject?.gradeComponents?.length) return null
 
         const componentGrades = subject.gradeComponents.map((comp: any) => {
