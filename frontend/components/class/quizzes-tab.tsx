@@ -92,8 +92,14 @@ export function QuizzesTab({ classData, isOwner }: QuizzesTabProps) {
         try {
             const response = await fetch(`/api/classes/${classData.id}/quizzes/${quizId}/unpublish`, { method: 'POST' })
             if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.error || t('quiz.unpublishError'))
+                let errorMessage = t('quiz.unpublishError')
+                try {
+                    const data = await response.json()
+                    if (data && data.error) errorMessage = data.error
+                } catch (e) {
+                    // Fallback if parsing fails
+                }
+                throw new Error(errorMessage)
             }
             toast({ title: t('quiz.unpublishSuccess') })
             router.refresh()

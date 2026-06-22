@@ -136,6 +136,10 @@ quizRoutes.delete('/:classId/quizzes/:quizId', async (req: Request, res: Respons
         const classData = await prisma.class.findUnique({ where: { id: req.params.classId } })
         if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
 
+        // Manually delete dependent records to avoid database constraint violations
+        await prisma.quizQuestion.deleteMany({ where: { quizId: req.params.quizId } })
+        await prisma.quizSubmission.deleteMany({ where: { quizId: req.params.quizId } })
+
         await prisma.quiz.delete({ where: { id: req.params.quizId } })
         return res.json({ success: true })
     } catch (error) {
@@ -416,8 +420,11 @@ quizRoutes.post('/:classId/quizzes/:quizId/duplicate', async (req: Request, res:
                 maxAttempts: sourceQuiz.maxAttempts,
                 questions: {
                     create: sourceQuiz.questions.map((q, index) => ({
-                        content: q.content, options: q.options,
-                        correctOption: q.correctOption, points: q.points, orderIndex: index,
+                        content: q.content,
+                        options: q.options || {},
+                        correctOption: q.correctOption,
+                        points: q.points || 1,
+                        orderIndex: index,
                     })),
                 },
             },

@@ -8,8 +8,6 @@ import OpenAI from 'openai'
 
 export const aiRoutes = Router()
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
 const fallbackResponses = [
     'Xin lỗi, tôi đang bận. Bạn thử lại sau nhé! 😊',
     'Hệ thống đang bảo trì, vui lòng quay lại sau!',
@@ -26,6 +24,7 @@ aiRoutes.post('/api/ai-chat', async (req: Request, res: Response) => {
             return res.json({ reply: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)] })
         }
 
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
         const completion = await groq.chat.completions.create({
             messages: [
                 {
@@ -60,6 +59,7 @@ aiRoutes.post('/api/ai-generate-quiz', async (req: Request, res: Response) => {
 
         const prompt = `Bạn là giáo viên Việt Nam. Hãy tạo ${numQuestions || 5} câu hỏi trắc nghiệm về chủ đề: "${topic}"\n\nYêu cầu:\n- Độ khó: ${difficultyText}\n- Mỗi câu có 4 đáp án A, B, C, D\n- Chỉ có 1 đáp án đúng\n- Câu hỏi rõ ràng, chính xác\n\nTrả về JSON theo format sau (KHÔNG markdown, CHỈ JSON thuần):\n[\n  {\n    "content": "Nội dung câu hỏi?",\n    "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],\n    "correctIndex": 0\n  }\n]\n\ncorrectIndex là vị trí đáp án đúng (0=A, 1=B, 2=C, 3=D).`
 
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
         const completion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
             model: 'llama-3.3-70b-versatile',
