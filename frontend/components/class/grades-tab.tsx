@@ -194,22 +194,17 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
         if (componentGrades.length === 0) return null
 
-        const hasWeights = componentGrades.some((item: any) => item.weight !== null && item.weight !== undefined && item.weight > 0)
+        let totalWeightedScore = 0
+        let totalWeight = 0
+        componentGrades.forEach((item: any) => {
+            // Treat default (unweighted) components as having a weight of 10% (Coefficient 1)
+            const w = (item.weight !== null && item.weight !== undefined && item.weight > 0) ? item.weight : 10
+            totalWeightedScore += item.score * w
+            totalWeight += w
+        })
 
-        if (hasWeights) {
-            let totalWeightedScore = 0
-            let totalWeight = 0
-            componentGrades.forEach((item: any) => {
-                const w = item.weight || 0
-                totalWeightedScore += item.score * w
-                totalWeight += w
-            })
-            if (totalWeight === 0) return null
-            return (totalWeightedScore / totalWeight).toFixed(1)
-        } else {
-            const sum = componentGrades.reduce((acc: number, item: any) => acc + item.score, 0)
-            return (sum / componentGrades.length).toFixed(1)
-        }
+        if (totalWeight === 0) return null
+        return (totalWeightedScore / totalWeight).toFixed(1)
     }
 
     const getScoreColor = (score: number | null) => {
