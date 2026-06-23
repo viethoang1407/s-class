@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,11 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
     const router = useRouter()
     const { toast } = useToast()
     const subjects = classData.subjects || []
+    const [grades, setGrades] = useState<any[]>(classData.grades || [])
+
+    useEffect(() => {
+        setGrades(classData.grades || [])
+    }, [classData.grades])
     const [newSubjectName, setNewSubjectName] = useState('')
     const [newComponentName, setNewComponentName] = useState('')
     const [newComponentWeight, setNewComponentWeight] = useState('')
@@ -58,6 +63,42 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
     const handleAddComponent = async () => {
         if (!newComponentName.trim() || !selectedSubjectId) return
+
+        const subject = subjects.find((s: any) => s.id === selectedSubjectId)
+        const hasWeightedComponents = subject?.gradeComponents?.some((c: any) => c.weight !== null && c.weight !== undefined && c.weight > 0)
+        const hasDefaultComponents = subject?.gradeComponents?.some((c: any) => c.weight === null || c.weight === undefined)
+
+        // 1. Enforce mode consistency: either all weighted or all default
+        if (hasWeightedComponents && !newComponentWeight) {
+            toast({
+                title: 'Lỗi cấu hình',
+                description: 'Môn học này đang tính theo trọng số. Vui lòng chọn trọng số (%) cho đầu điểm này.',
+                variant: 'destructive',
+            })
+            return
+        }
+
+        if (hasDefaultComponents && newComponentWeight) {
+            toast({
+                title: 'Lỗi cấu hình',
+                description: 'Môn học này đang dùng đầu điểm mặc định (trung bình cộng). Không thể thêm đầu điểm có trọng số %.',
+                variant: 'destructive',
+            })
+            return
+        }
+
+        // 2. Validate total weight sum does not exceed 100%
+        const currentTotalWeight = subject?.gradeComponents?.reduce((acc: number, c: any) => acc + (c.weight || 0), 0) || 0
+        const newWeightVal = newComponentWeight ? parseFloat(newComponentWeight) : 0
+        
+        if (newWeightVal > 0 && currentTotalWeight + newWeightVal > 100) {
+            toast({
+                title: 'Lỗi cấu hình',
+                description: `Tổng trọng số các đầu điểm không được vượt quá 100% (Hiện tại: ${currentTotalWeight}%)`,
+                variant: 'destructive',
+            })
+            return
+        }
 
         try {
             const response = await fetch(`/api/classes/${classData.id}/subjects/${selectedSubjectId}/components`, {
@@ -166,7 +207,19 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
             })
 
             if (response.ok) {
+                const savedGrade = await response.json()
                 toast({ title: '✓ Đã lưu', duration: 1500 })
+                setGrades((prev) => {
+                    const idx = prev.findIndex((g: any) => g.componentId === componentId && g.userId === studentId)
+                    if (idx > -1) {
+                        const newGrades = [...prev]
+                        newGrades[idx] = savedGrade
+                        return newGrades
+                    } else {
+                        return [...prev, savedGrade]
+                    }
+                })
+                router.refresh()
             } else {
                 throw new Error()
             }
@@ -183,7 +236,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
         if (!subject?.gradeComponents?.length) return null
 
         const componentGrades = subject.gradeComponents.map((comp: any) => {
-            const grade = classData.grades?.find(
+            const grade = grades?.find(
                 (g: any) => g.userId === memberId && g.componentId === comp.id
             )
             return {
@@ -194,17 +247,22 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
         if (componentGrades.length === 0) return null
 
-        let totalWeightedScore = 0
-        let totalWeight = 0
-        componentGrades.forEach((item: any) => {
-            // Treat default (unweighted) components as having a weight of 10% (Coefficient 1)
-            const w = (item.weight !== null && item.weight !== undefined && item.weight > 0) ? item.weight : 10
-            totalWeightedScore += item.score * w
-            totalWeight += w
-        })
+        const hasWeights = componentGrades.some((item: any) => item.weight !== null && item.weight !== undefined && item.weight > 0)
 
-        if (totalWeight === 0) return null
-        return (totalWeightedScore / totalWeight).toFixed(1)
+        if (hasWeights) {
+            let totalWeightedScore = 0
+            let totalWeight = 0
+            componentGrades.forEach((item: any) => {
+                const w = item.weight || 0
+                totalWeightedScore += item.score * w
+                totalWeight += w
+            })
+            if (totalWeight === 0) return null
+            return (totalWeightedScore / totalWeight).toFixed(1)
+        } else {
+            const sum = componentGrades.reduce((acc: number, item: any) => acc + item.score, 0)
+            return (sum / componentGrades.length).toFixed(1)
+        }
     }
 
     const getScoreColor = (score: number | null) => {
@@ -217,7 +275,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
 
     // Stats
     const totalComponents = subjects.reduce((sum: number, s: any) => sum + (s.gradeComponents?.length || 0), 0)
-    const totalGrades = classData.grades?.length || 0
+    const totalGrades = grades?.length || 0
 
     if (subjects.length === 0) {
         return (
@@ -410,7 +468,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                                         </p>
                                                     </td>
                                                     {subject.gradeComponents.map((comp: any) => {
-                                                        const existingGrade = classData.grades?.find(
+                                                        const existingGrade = grades?.find(
                                                             (g: any) => g.userId === member.user.id && g.componentId === comp.id
                                                         )
                                                         const key = `${member.user.id}-${comp.id}`
@@ -420,6 +478,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                                             <td key={comp.id} className="text-center py-2 px-2">
                                                                 {isOwner ? (
                                                                     <Input
+                                                                        key={`${member.user.id}-${comp.id}-${existingGrade?.score ?? ''}`}
                                                                         type="number"
                                                                         min={0}
                                                                         max={10}

@@ -135,6 +135,31 @@ gradeRoutes.post('/:classId/subjects/:subjectId/components', async (req: Request
         if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
 
         const { name, weight } = req.body
+
+        // Get current grade components for the subject to perform validation
+        const currentComponents = await prisma.gradeComponent.findMany({
+            where: { subjectId: req.params.subjectId },
+        })
+
+        const hasWeightedComponents = currentComponents.some((c) => c.weight !== null && c.weight !== undefined && c.weight > 0)
+        const hasDefaultComponents = currentComponents.some((c) => c.weight === null || c.weight === undefined)
+
+        const newWeightVal = weight ? parseFloat(weight) : null
+
+        if (hasWeightedComponents && (newWeightVal === null || newWeightVal <= 0)) {
+            return res.status(400).json({ error: 'Môn học này đang tính theo trọng số. Vui lòng chọn trọng số (%) cho đầu điểm này.' })
+        }
+
+        if (hasDefaultComponents && newWeightVal !== null && newWeightVal > 0) {
+            return res.status(400).json({ error: 'Môn học này đang dùng đầu điểm mặc định (trung bình cộng). Không thể thêm đầu điểm có trọng số %.' })
+        }
+
+        if (newWeightVal !== null && newWeightVal > 0) {
+            const currentTotalWeight = currentComponents.reduce((acc, c) => acc + (c.weight || 0), 0)
+            if (currentTotalWeight + newWeightVal > 100) {
+                return res.status(400).json({ error: `Tổng trọng số các đầu điểm không được vượt quá 100% (Hiện tại: ${currentTotalWeight}%)` })
+            }
+        }
         const component = await prisma.gradeComponent.create({
             data: {
                 classId: req.params.classId,
