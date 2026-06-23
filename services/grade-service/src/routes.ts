@@ -195,3 +195,59 @@ gradeRoutes.delete('/:classId/subjects/:subjectId/components/:componentId', asyn
         return res.status(500).json({ error: 'Lỗi server' })
     }
 })
+
+// PATCH /api/classes/:classId/subjects/:subjectId/components/:componentId
+gradeRoutes.patch('/:classId/subjects/:subjectId/components/:componentId', async (req: Request, res: Response) => {
+    try {
+        const clerkId = req.headers['x-user-clerk-id'] as string
+        if (!clerkId) return res.status(401).json({ error: 'Unauthorized' })
+
+        const user = await getUserByClerkId(clerkId)
+        if (!user) return res.status(401).json({ error: 'User not found' })
+
+        const classData = await prisma.class.findUnique({ where: { id: req.params.classId } })
+        if (!classData || classData.ownerId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+
+        const { name, weight } = req.body
+
+        // Get all components of the subject
+        const currentComponents = await prisma.gradeComponent.findMany({
+            where: { subjectId: req.params.subjectId }
+        })
+
+        const otherComponents = currentComponents.filter(c => c.id !== req.params.componentId)
+
+        const hasWeightedComponents = otherComponents.some((c) => c.weight !== null && c.weight !== undefined && c.weight > 0)
+        const hasDefaultComponents = otherComponents.some((c) => c.weight === null || c.weight === undefined)
+
+        const newWeightVal = weight ? parseFloat(weight) : null
+
+        if (hasWeightedComponents && (newWeightVal === null || newWeightVal <= 0)) {
+            return res.status(400).json({ error: 'Môn học này đang tính theo trọng số. Vui lòng chọn trọng số (%) cho đầu điểm.' })
+        }
+
+        if (hasDefaultComponents && newWeightVal !== null && newWeightVal > 0) {
+            return res.status(400).json({ error: 'Môn học này đang dùng đầu điểm mặc định (trung bình cộng). Không thể dùng trọng số %.' })
+        }
+
+        if (newWeightVal !== null && newWeightVal > 0) {
+            const currentTotalWeight = otherComponents.reduce((acc, c) => acc + (c.weight || 0), 0)
+            if (currentTotalWeight + newWeightVal > 100) {
+                return res.status(400).json({ error: `Tổng trọng số các đầu điểm không được vượt quá 100% (Hiện tại sau khi đổi: ${currentTotalWeight + newWeightVal}%)` })
+            }
+        }
+
+        const updated = await prisma.gradeComponent.update({
+            where: { id: req.params.componentId },
+            data: {
+                name: name ? name.trim() : undefined,
+                weight: newWeightVal
+            }
+        })
+
+        return res.json(updated)
+    } catch (error) {
+        console.error('Update component error:', error)
+        return res.status(500).json({ error: 'Lỗi server' })
+    }
+})

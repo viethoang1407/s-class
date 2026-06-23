@@ -188,6 +188,31 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
         }
     }
 
+    const handleUpdateComponentWeight = async (subjectId: string, componentId: string, weight: number | null) => {
+        try {
+            const response = await fetch(`/api/classes/${classData.id}/subjects/${subjectId}/components/${componentId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weight }),
+            })
+
+            if (!response.ok) {
+                const data = await response.json()
+                throw new Error(data.error || 'Không thể cập nhật trọng số')
+            }
+
+            toast({ title: '✓ Đã cập nhật trọng số' })
+            router.refresh()
+        } catch (error: any) {
+            toast({
+                title: 'Lỗi',
+                description: error.message || 'Không thể cập nhật trọng số',
+                variant: 'destructive',
+            })
+            router.refresh()
+        }
+    }
+
     const handleSaveGrade = async (studentId: string, componentId: string, score: number) => {
         const key = `${studentId}-${componentId}`
         setSavingGrade(key)
@@ -258,7 +283,7 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                 totalWeight += w
             })
             if (totalWeight === 0) return null
-            return (totalWeightedScore / totalWeight).toFixed(1)
+            return (totalWeightedScore / 100).toFixed(1)
         } else {
             const sum = componentGrades.reduce((acc: number, item: any) => acc + item.score, 0)
             return (sum / componentGrades.length).toFixed(1)
@@ -581,8 +606,27 @@ export function GradesTab({ classData, isOwner }: GradesTabProps) {
                                     <Label>Đầu điểm đã tạo</Label>
                                     <div className="border rounded-lg divide-y">
                                         {components.map((comp: any) => (
-                                            <div key={comp.id} className="flex items-center justify-between px-3 py-2">
-                                                <span className="text-sm">{comp.name} {comp.weight ? `(${comp.weight}%)` : ''}</span>
+                                            <div key={comp.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                                                <span className="text-sm font-medium flex-1">{comp.name}</span>
+                                                <select
+                                                    key={`${comp.id}-${comp.weight ?? ''}`}
+                                                    defaultValue={comp.weight ?? ''}
+                                                    onChange={async (e) => {
+                                                        const val = e.target.value
+                                                        const newWeight = val ? parseFloat(val) : null
+                                                        await handleUpdateComponentWeight(editingSubject.id, comp.id, newWeight)
+                                                    }}
+                                                    className="h-8 w-32 rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                >
+                                                    <option value="">Không trọng số</option>
+                                                    <option value="10">10%</option>
+                                                    <option value="15">15%</option>
+                                                    <option value="20">20%</option>
+                                                    <option value="30">30%</option>
+                                                    <option value="40">40%</option>
+                                                    <option value="50">50%</option>
+                                                    <option value="100">100%</option>
+                                                </select>
                                                 <button
                                                     onClick={() => {
                                                         setDeletingComponent({
